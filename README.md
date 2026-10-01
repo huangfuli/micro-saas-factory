@@ -1,132 +1,67 @@
 # MicroSaaS Agent Factory
 
-AI-native product factory that turns public demand signals into validated, build-ready MicroSaaS product packages.
+AI-native product factory:
 
-## Pipeline
+`Sources -> Scout -> Gate -> Analyst -> Product Manager -> Builder Queue -> Builder -> QA -> Launch`
 
-`Sources -> Scout -> Semantic Clusters -> Gate -> Analyst -> Product Manager -> Builder Queue -> Builder -> QA -> Launch`
+## Builder Agent v0.1
 
-## Scout v0.3
+Builder consumes the next eligible entry from `data/build_queue.jsonl` and creates an isolated Next.js App Router workspace under `builds/<product-slug>/`.
 
-Scout mines live public demand from Hacker News and GitHub Issues, extracts pain language, removes duplicate signals, groups related jobs-to-be-done, and scores commercial intent plus evidence quality.
+It performs four controlled stages:
 
-A candidate needs at least two distinct evidence items before it can PASS.
+1. Deterministic scaffold: package.json, TypeScript config, landing page, dashboard, health/job API routes, environment template and copied PRD/technical docs.
+2. Optional AI codegen: `--builder-ai` may only write inside `src/` and `docs/`; it cannot write secrets, package files, CI, shell scripts or infrastructure.
+3. Optional install: `--install` runs npm install.
+4. QA gate: `--qa` runs npm install, npm run lint and npm run build. Only successful QA moves the queue item to BUILT.
 
-## Analyst Agent v0.1
+The generated scaffold targets Next.js 16.3 and requires Node.js 20.9+.
 
-Analyst converts top PASS opportunities into commercial theses:
-
-- target user / JTBD
-- commercial intent, urgency, frequency and budget
-- competitors and pricing when live research is enabled
-- MVP candidates
-- acquisition channels
-- risks
-- BUILD / VALIDATE / WATCH / REJECT
-
-Live competitor/pricing facts use Responses API web search only when `--web-research` is enabled.
-
-## Product Manager Agent v0.1
-
-Product Manager automatically converts only BUILD/VALIDATE theses into a product directory under `products/<slug>/`.
-
-Each product gets:
-
-- `product.json` — complete structured product package
-- `PRD.md` — one-page MVP PRD
-- `LANDING_PAGE.md` — validation/launch copy
-- `VALIDATION.md` — measurable waitlist/preorder experiments
-- `TECH_SPEC.md` — build architecture and interfaces
-- `TASKS.md` — Builder-ready task breakdown
-- `builder_manifest.json` — machine-readable Builder contract
-
-### Development gate
-
-`BUILD -> READY_FOR_BUILD -> data/build_queue.jsonl`
-
-`VALIDATE -> BLOCKED_FOR_VALIDATION -> validation package only`
-
-This prevents the coding agent from automatically building a weak thesis before market validation.
-
-## Run
+### Commands
 
 ```bash
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# macOS/Linux
-source .venv/bin/activate
-
-pip install -r requirements.txt
-
-# 1. Scout only
-python main.py
-
-# 2. Scout + Analyst
-python main.py --analyze
-
-# 3. Live competitor/pricing research
-python main.py --web-research
-
-# 4. End-to-end: opportunity -> product package
-python main.py --productize
-
-# 5. End-to-end with live market research + AI product design
+# Discover + analyze + create build-ready product packages
 python main.py --web-research --productize --pm-ai
+
+# Create a deterministic product workspace from the next BUILD item
+python main.py --build-next
+
+# Add product-specific AI-generated core workflow files
+python main.py --build-next --builder-ai --clean-build
+
+# Install dependencies and verify a deployable build
+python main.py --build-next --builder-ai --qa --clean-build
 ```
 
-Without `OPENAI_API_KEY`, Scout, Analyst fallback, and Product Manager fallback still work. AI stages use schema-constrained outputs when enabled.
+### Builder state machine
 
-## Current architecture
+`QUEUED -> BUILDING -> SCAFFOLDED -> BUILT`
 
-```
-sources/
-  hackernews.py
-  github_issues.py
+Failures become `FAILED` and retain the error. A failed or scaffolded item can be picked up again for repair/rebuild.
 
-agents/
-  signal_miner.py
-  commercial_intent.py
-  deduplicator.py
-  semantic_clusterer.py
-  opportunity_builder.py
-  scout.py
-  analyst.py
-  product_manager.py
+### Safety boundaries
 
-schemas/
-  signal.py
-  cluster.py
-  opportunity.py
-  analysis.py
-  product.py
+- VALIDATE products never enter Builder.
+- AI-generated files are restricted to `src/` and `docs/`.
+- Secrets are never generated into source files.
+- Builder does not modify its own factory repository while generating products.
+- Every workspace writes `.factory/build_result.json` for auditability.
+- QA must pass before status becomes BUILT.
 
-reports/
-  json_report.py
-  analysis_report.py
-  product_package.py
+## Earlier stages
 
-builder/
-  queue.py
+Scout v0.3 mines Hacker News and GitHub Issues, deduplicates signals, performs local semantic clustering and scores commercial intent/evidence quality.
 
-scoring/
-orchestrator/
-tests/
-products/
-```
+Analyst v0.1 turns strong opportunities into commercial theses and can optionally use live web research for competitors/pricing.
 
-## Operating principles
+Product Manager v0.1 generates `PRD.md`, `LANDING_PAGE.md`, `VALIDATION.md`, `TECH_SPEC.md`, `TASKS.md`, `product.json` and `builder_manifest.json`.
 
-- No evidence, no PASS.
-- Two evidence items minimum before Analyst.
-- Cheap deterministic stages run before paid AI research.
-- VALIDATE does not automatically enter coding.
-- BUILD is converted into a machine-readable Builder queue entry.
-- Every coding task includes explicit acceptance criteria.
-- Market claims must remain traceable to source evidence.
+BUILD products enter `data/build_queue.jsonl`; VALIDATE products remain blocked for market validation.
+
+## Models
+
+The default API model is `gpt-5.6-sol`. Override with `OPENAI_MODEL` or `OPENAI_CODE_MODEL`.
 
 ## Next milestone
 
-Builder Agent v0.1 will consume `data/build_queue.jsonl`, create an isolated product repository/branch, implement tasks T001-T006, run tests, and produce a launch candidate rather than merely generating code snippets.
+Builder v0.2 will create a dedicated GitHub repository for each BUILT product, open a PR with generated code, and hand the successful build to Deployment/Launch Agent for Vercel + Stripe + domain configuration.
