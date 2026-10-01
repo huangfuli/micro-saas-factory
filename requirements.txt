@@ -1,3 +1,5 @@
 pydantic>=2.7,<3
 python-dotenv>=1.0,<2
 rich>=13.7,<14
+openai
+pytest>=8,<10
