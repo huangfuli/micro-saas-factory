@@ -2,66 +2,126 @@
 
 AI-native product factory:
 
-`Sources -> Scout -> Gate -> Analyst -> Product Manager -> Builder Queue -> Builder -> QA -> Launch`
+`Sources -> Scout -> Gate -> Analyst -> Product Manager -> Builder -> QA -> Launch`
 
-## Builder Agent v0.1
+## Current closed loop
 
-Builder consumes the next eligible entry from `data/build_queue.jsonl` and creates an isolated Next.js App Router workspace under `builds/<product-slug>/`.
+`real demand -> evidence -> commercial thesis -> PRD -> generated app -> QA -> release package -> GitHub -> Stripe -> Vercel -> smoke test`
 
-It performs four controlled stages:
+The factory does not mark a product LIVE unless the production deployment responds successfully on the configured smoke-test paths.
 
-1. Deterministic scaffold: package.json, TypeScript config, landing page, dashboard, health/job API routes, environment template and copied PRD/technical docs.
-2. Optional AI codegen: `--builder-ai` may only write inside `src/` and `docs/`; it cannot write secrets, package files, CI, shell scripts or infrastructure.
-3. Optional install: `--install` runs npm install.
-4. QA gate: `--qa` runs npm install, npm run lint and npm run build. Only successful QA moves the queue item to BUILT.
+## Builder v0.2
 
-The generated scaffold targets Next.js 16.3 and requires Node.js 20.9+.
+Builder creates a Next.js 16.3 App Router product workspace under `builds/<slug>/`.
 
-### Commands
+Generated products now include:
+
+- landing page + dashboard
+- health and core-job API routes
+- hosted Stripe Checkout session route in subscription mode
+- `.env.example`
+- `.vercelignore`
+- PRD / validation / technical / task docs
+- Builder audit file
+
+AI Builder remains restricted to `src/` and `docs/`.
+
+## Launch Agent v0.1
+
+Only products whose Builder result is `BUILT` can enter Launch.
+
+Launch performs:
+
+1. Copy the clean workspace to `releases/<slug>/`.
+2. Exclude `node_modules`, `.next`, local env files and Vercel metadata.
+3. Produce `releases/<slug>-0.1.0.zip`.
+4. Optionally publish an independent GitHub repository with local `gh`.
+5. Optionally create a Stripe Product + monthly Price.
+6. Optionally create/link a Vercel project, configure production environment values, and deploy production.
+7. Smoke-test `/` and `/api/health`.
+8. Mark the queue item `LIVE` only if all smoke checks pass.
+
+Launch state:
+
+`BUILT -> READY_TO_PUBLISH -> PUBLISHED -> DEPLOYED -> LIVE`
+
+Failures become `LAUNCH_FAILED` and retain the failure reason.
+
+## Commands
+
+First produce and QA a product:
 
 ```bash
-# Discover + analyze + create build-ready product packages
 python main.py --web-research --productize --pm-ai
-
-# Create a deterministic product workspace from the next BUILD item
-python main.py --build-next
-
-# Add product-specific AI-generated core workflow files
-python main.py --build-next --builder-ai --clean-build
-
-# Install dependencies and verify a deployable build
 python main.py --build-next --builder-ai --qa --clean-build
 ```
 
-### Builder state machine
+Prepare a release without touching external services:
 
-`QUEUED -> BUILDING -> SCAFFOLDED -> BUILT`
+```bash
+python main.py --launch-next
+```
 
-Failures become `FAILED` and retain the error. A failed or scaffolded item can be picked up again for repair/rebuild.
+Publish the release to a new GitHub product repository:
 
-### Safety boundaries
+```bash
+python main.py --launch-next --publish-github
+```
 
-- VALIDATE products never enter Builder.
-- AI-generated files are restricted to `src/` and `docs/`.
-- Secrets are never generated into source files.
-- Builder does not modify its own factory repository while generating products.
-- Every workspace writes `.factory/build_result.json` for auditability.
-- QA must pass before status becomes BUILT.
+Provision Stripe recurring billing:
 
-## Earlier stages
+```bash
+python main.py --launch-next --provision-stripe
+```
 
-Scout v0.3 mines Hacker News and GitHub Issues, deduplicates signals, performs local semantic clustering and scores commercial intent/evidence quality.
+Deploy to Vercel and smoke-test:
 
-Analyst v0.1 turns strong opportunities into commercial theses and can optionally use live web research for competitors/pricing.
+```bash
+python main.py --launch-next --deploy-vercel
+```
 
-Product Manager v0.1 generates `PRD.md`, `LANDING_PAGE.md`, `VALIDATION.md`, `TECH_SPEC.md`, `TASKS.md`, `product.json` and `builder_manifest.json`.
+Full external launch in one run:
 
-BUILD products enter `data/build_queue.jsonl`; VALIDATE products remain blocked for market validation.
+```bash
+python main.py --launch-next --publish-github --provision-stripe --deploy-vercel
+```
 
-## Models
+## External credentials
 
-The default API model is `gpt-5.6-sol`. Override with `OPENAI_MODEL` or `OPENAI_CODE_MODEL`.
+Automatic GitHub product-repo creation uses the local GitHub CLI. The current ChatGPT GitHub connector can modify existing repositories but does not expose repository creation, so the factory uses `gh repo create` when it is run on your machine.
+
+Required launch configuration is shown in `.env.example`:
+
+- `GITHUB_OWNER`
+- `PRODUCT_REPO_VISIBILITY`
+- `VERCEL_TOKEN`
+- `STRIPE_SECRET_KEY`
+- optional `STRIPE_WEBHOOK_SECRET`
+
+Secrets are never written into generated product source. Vercel command failures redact tokens and secret values from factory error logs.
+
+## Stripe path
+
+Launch creates a Stripe Product and recurring monthly Price. The generated Next.js checkout endpoint reads `STRIPE_SECRET_KEY` and `STRIPE_PRICE_ID` only on the server and creates a hosted Checkout Session in subscription mode.
+
+## Vercel path
+
+Launch first creates a preview deployment to link/create the Vercel project, then upserts configured production environment variables, creates the production deployment, and performs HTTP smoke checks.
+
+## GitHub path
+
+If `git`, `gh`, and `GITHUB_OWNER` are available, Launch initializes the release directory, creates the product repository, adds the remote, commits the generated launch candidate, and pushes it.
+
+## Guardrails
+
+- VALIDATE products cannot reach Builder.
+- non-BUILT products cannot reach Launch.
+- local secrets are excluded from release packages.
+- AI codegen cannot edit package files, CI, secrets or infrastructure.
+- deployment is not called LIVE until smoke tests succeed.
+- every release writes `.factory/release_manifest.json`.
+- every launch writes `.factory/launch_result.json`.
 
 ## Next milestone
 
-Builder v0.2 will create a dedicated GitHub repository for each BUILT product, open a PR with generated code, and hand the successful build to Deployment/Launch Agent for Vercel + Stripe + domain configuration.
+Launch v0.2 adds domain provisioning, Stripe webhook registration, production analytics/monitoring, rollback, and automated post-launch KPI collection so the factory can decide whether to iterate, hold, or retire each MicroSaaS.
