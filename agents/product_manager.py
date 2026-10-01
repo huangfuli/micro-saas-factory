@@ -26,7 +26,7 @@ class ProductManagerAgent:
     """Converts BUILD/VALIDATE analyst theses into build-ready product packages."""
 
     def __init__(self):
-        self.model = os.getenv("OPENAI_MODEL", "gpt-6-astra")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-5.6-sol")
 
     def productize(self, report: AnalystReport, use_ai: bool = False) -> ProductPackage:
         if report.recommendation not in {"BUILD", "VALIDATE"}:
