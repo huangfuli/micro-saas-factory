@@ -11,7 +11,7 @@ class AnalystAgent:
     """Turns an evidence-backed opportunity into a commercial product thesis."""
 
     def __init__(self):
-        self.model = os.getenv("OPENAI_MODEL", "gpt-6-astra")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-5.6-sol")
 
     def analyze(self, opportunity: Opportunity, web_research: bool = False) -> AnalystReport:
         if web_research and os.getenv("OPENAI_API_KEY"):
