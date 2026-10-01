@@ -24,7 +24,11 @@ def test_builder_creates_workspace_without_external_commands(tmp_path, monkeypat
     workspace = Path(result.workspace)
     assert (workspace / "package.json").exists()
     assert (workspace / "src/app/page.tsx").exists()
-    assert (workspace / "docs/PRD.md").exists()\n    assert (workspace / "src/app/api/billing/checkout/route.ts").exists()\n    env_text = (workspace / ".env.example").read_text(encoding="utf-8")\n    assert "STRIPE_PRICE_ID=" in env_text
+    assert (workspace / "docs/PRD.md").exists()
+    assert (workspace / "src/app/api/billing/checkout/route.ts").exists()
+
+    env_text = (workspace / ".env.example").read_text(encoding="utf-8")
+    assert "STRIPE_PRICE_ID=" in env_text
 
     rows = [
         json.loads(x)
