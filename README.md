@@ -1,67 +1,83 @@
 # MicroSaaS Agent Factory
 
-AI-native product factory: discover real problems, score opportunities, validate ideas, build MVPs, test, launch, and iterate.
+AI-native product factory that turns public demand signals into validated, build-ready MicroSaaS product packages.
 
-Pipeline:
+## Pipeline
 
-`Sources -> Scout -> Semantic Clusters -> Gate -> Analyst -> PM -> Builder -> QA -> Launch`
+`Sources -> Scout -> Semantic Clusters -> Gate -> Analyst -> Product Manager -> Builder Queue -> Builder -> QA -> Launch`
 
 ## Scout v0.3
 
-Scout mines live public demand from Hacker News and GitHub Issues, extracts pain language, removes duplicate signals, and groups related jobs-to-be-done with a local TF-IDF similarity model.
+Scout mines live public demand from Hacker News and GitHub Issues, extracts pain language, removes duplicate signals, groups related jobs-to-be-done, and scores commercial intent plus evidence quality.
 
-Each candidate now carries:
-
-- source evidence and URLs
-- signal/source counts
-- commercial-intent score
-- evidence-quality score
-- pain, demand, willingness-to-pay, competition, build-ease and acquisition scores
-
-A candidate needs at least two distinct evidence items before it can PASS the product gate.
+A candidate needs at least two distinct evidence items before it can PASS.
 
 ## Analyst Agent v0.1
 
-Analyst converts the highest-ranked PASS opportunities into commercial product theses.
+Analyst converts top PASS opportunities into commercial theses:
 
-Without an API key it runs a deterministic fallback analysis. With `--web-research` and `OPENAI_API_KEY`, it uses the OpenAI Responses API web-search tool to verify competitors and pricing, then returns schema-validated research.
-
-Analyst outputs:
-
-- target user and job-to-be-done
-- commercial intent / urgency / frequency / budget scores
-- competitors and pricing
-- initial USD price range
-- MVP feature set
+- target user / JTBD
+- commercial intent, urgency, frequency and budget
+- competitors and pricing when live research is enabled
+- MVP candidates
 - acquisition channels
 - risks
-- research source URLs
-- BUILD / VALIDATE / WATCH / REJECT recommendation
+- BUILD / VALIDATE / WATCH / REJECT
 
-Only the top `ANALYST_TOP_N` PASS opportunities are researched to control API cost.
+Live competitor/pricing facts use Responses API web search only when `--web-research` is enabled.
+
+## Product Manager Agent v0.1
+
+Product Manager automatically converts only BUILD/VALIDATE theses into a product directory under `products/<slug>/`.
+
+Each product gets:
+
+- `product.json` — complete structured product package
+- `PRD.md` — one-page MVP PRD
+- `LANDING_PAGE.md` — validation/launch copy
+- `VALIDATION.md` — measurable waitlist/preorder experiments
+- `TECH_SPEC.md` — build architecture and interfaces
+- `TASKS.md` — Builder-ready task breakdown
+- `builder_manifest.json` — machine-readable Builder contract
+
+### Development gate
+
+`BUILD -> READY_FOR_BUILD -> data/build_queue.jsonl`
+
+`VALIDATE -> BLOCKED_FOR_VALIDATION -> validation package only`
+
+This prevents the coding agent from automatically building a weak thesis before market validation.
 
 ## Run
 
 ```bash
 python -m venv .venv
+
 # Windows
 .venv\Scripts\activate
+
 # macOS/Linux
 source .venv/bin/activate
 
 pip install -r requirements.txt
 
-# Scout only: no OpenAI key required
+# 1. Scout only
 python main.py
 
-# Scout + deterministic Analyst
+# 2. Scout + Analyst
 python main.py --analyze
 
-# Scout + Analyst + live competitor/pricing research
+# 3. Live competitor/pricing research
 python main.py --web-research
+
+# 4. End-to-end: opportunity -> product package
+python main.py --productize
+
+# 5. End-to-end with live market research + AI product design
+python main.py --web-research --productize --pm-ai
 ```
 
-Copy `.env.example` to `.env` or set environment variables through your shell. Reports are written to `data/reports/`.
+Without `OPENAI_API_KEY`, Scout, Analyst fallback, and Product Manager fallback still work. AI stages use schema-constrained outputs when enabled.
 
 ## Current architecture
 
@@ -69,6 +85,7 @@ Copy `.env.example` to `.env` or set environment variables through your shell. R
 sources/
   hackernews.py
   github_issues.py
+
 agents/
   signal_miner.py
   commercial_intent.py
@@ -77,26 +94,39 @@ agents/
   opportunity_builder.py
   scout.py
   analyst.py
+  product_manager.py
+
 schemas/
   signal.py
   cluster.py
   opportunity.py
   analysis.py
-scoring/
+  product.py
+
 reports/
+  json_report.py
+  analysis_report.py
+  product_package.py
+
+builder/
+  queue.py
+
+scoring/
 orchestrator/
 tests/
+products/
 ```
 
-## Design rules
+## Operating principles
 
 - No evidence, no PASS.
-- Two distinct evidence items are required to cross the product gate.
-- Source failures degrade gracefully.
-- Cheap deterministic stages run before paid model research.
-- Live competitor or pricing facts must come from web research, never model memory alone.
-- Analyst web research is optional and limited to top candidates.
+- Two evidence items minimum before Analyst.
+- Cheap deterministic stages run before paid AI research.
+- VALIDATE does not automatically enter coding.
+- BUILD is converted into a machine-readable Builder queue entry.
+- Every coding task includes explicit acceptance criteria.
+- Market claims must remain traceable to source evidence.
 
 ## Next milestone
 
-Product Manager Agent v0.1: convert a VALIDATE/BUILD thesis into a one-page PRD, landing-page test, preorder experiment and technical MVP specification.
+Builder Agent v0.1 will consume `data/build_queue.jsonl`, create an isolated product repository/branch, implement tasks T001-T006, run tests, and produce a launch candidate rather than merely generating code snippets.
