@@ -1,27 +1,32 @@
-from schemas.opportunity import Evidence, Opportunity
+import logging
+from agents.deduplicator import SignalDeduplicator
+from agents.opportunity_builder import OpportunityBuilder
+from agents.signal_miner import SignalMiner
+from sources.github_issues import GitHubIssuesSource
+from sources.hackernews import HackerNewsSource
+
+log = logging.getLogger(__name__)
 
 
 class ScoutAgent:
-    """v0.1 deterministic Scout. v0.2 will ingest live public demand signals."""
+    """v0.2 live public demand-signal discovery pipeline."""
 
-    def discover(self) -> list[Opportunity]:
-        return [
-            Opportunity(
-                title="AI Screenshot-to-SOP",
-                problem="Small teams repeatedly turn screenshots into step-by-step internal SOPs.",
-                target_user="Agencies, support teams and operations teams",
-                proposed_solution="Upload screenshots and automatically generate an editable SOP with steps and annotations.",
-                evidence=[Evidence(source="seed", quote="Teams repeatedly document browser workflows by hand.")],
-                pain_score=7.5, demand_score=7.0, willingness_to_pay=7.0,
-                competition_score=5.5, build_ease_score=8.5, acquisition_score=7.0,
-            ),
-            Opportunity(
-                title="Generic AI Chatbot",
-                problem="Users want another general-purpose chatbot.",
-                target_user="Everyone",
-                proposed_solution="A generic chat interface.",
-                evidence=[Evidence(source="seed", quote="Generic AI chat is already widely available.")],
-                pain_score=3.0, demand_score=5.0, willingness_to_pay=2.0,
-                competition_score=10.0, build_ease_score=9.0, acquisition_score=2.0,
-            ),
-        ]
+    def __init__(self, sources=None):
+        self.sources = sources or [HackerNewsSource(), GitHubIssuesSource()]
+        self.miner = SignalMiner()
+        self.deduplicator = SignalDeduplicator()
+        self.builder = OpportunityBuilder()
+        self.last_signals = []
+
+    def discover(self, per_source: int = 40):
+        raw = []
+        for source in self.sources:
+            try:
+                raw.extend(source.fetch(limit=per_source))
+            except Exception as exc:
+                log.warning("Scout source %s failed: %s", source.name, exc)
+
+        mined = [self.miner.analyze(x) for x in raw]
+        useful = [x for x in mined if self.miner.keep(x)]
+        self.last_signals = self.deduplicator.dedupe(useful)
+        return self.builder.build(self.last_signals)
