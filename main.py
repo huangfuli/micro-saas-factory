@@ -38,6 +38,23 @@ def show_analyst(console, reports):
     console.print(table)
 
 
+def show_products(console, outputs):
+    table = Table(title="Product Manager v0.1 — Productization Board")
+    table.add_column("Readiness")
+    table.add_column("Builder queue")
+    table.add_column("Product")
+    table.add_column("Package")
+    for output in outputs:
+        package = output["package"]
+        table.add_row(
+            package.readiness,
+            "QUEUED" if output["queued"] else "NOT QUEUED",
+            package.positioning.product_name,
+            output["folder"],
+        )
+    console.print(table)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--analyze", action="store_true", help="run Analyst on PASS opportunities")
@@ -45,6 +62,16 @@ def main() -> None:
         "--web-research",
         action="store_true",
         help="enable OpenAI Responses web_search for current competitor/pricing research",
+    )
+    parser.add_argument(
+        "--productize",
+        action="store_true",
+        help="convert BUILD/VALIDATE analyst results into product packages",
+    )
+    parser.add_argument(
+        "--pm-ai",
+        action="store_true",
+        help="use Structured Outputs to enrich product packages; requires OPENAI_API_KEY",
     )
     args = parser.parse_args()
 
@@ -54,11 +81,21 @@ def main() -> None:
     show_scout(console, results)
     console.print(f"\nScout report: {scout_report}")
 
-    if args.analyze or args.web_research:
+    should_analyze = args.analyze or args.web_research or args.productize or args.pm_ai
+    if should_analyze:
         reports, analyst_report = workflow.run_analysis(results, web_research=args.web_research)
         console.print()
         show_analyst(console, reports)
         console.print(f"\nAnalyst report: {analyst_report}")
+
+        if args.productize or args.pm_ai:
+            outputs = workflow.run_productization(reports, use_ai=args.pm_ai)
+            console.print()
+            show_products(console, outputs)
+            if outputs:
+                console.print("\nBuild-ready products are appended to data/build_queue.jsonl.")
+            else:
+                console.print("\nNo BUILD/VALIDATE thesis qualified for productization.")
 
 
 if __name__ == "__main__":
