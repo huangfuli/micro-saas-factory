@@ -2,6 +2,7 @@ import argparse
 from rich.console import Console
 from rich.table import Table
 from orchestrator.workflow import FactoryWorkflow
+from builder.agent import BuilderAgent
 
 
 def show_scout(console, results):
@@ -55,27 +56,53 @@ def show_products(console, outputs):
     console.print(table)
 
 
+def show_build(console, result):
+    if result is None:
+        console.print("Builder queue is empty.")
+        return
+    table = Table(title="Builder Agent v0.1 — Build Result")
+    table.add_column("Status")
+    table.add_column("Product")
+    table.add_column("Workspace")
+    table.add_column("Files", justify="right")
+    table.add_row(
+        result.status,
+        result.product_slug,
+        result.workspace,
+        str(len(result.generated_files)),
+    )
+    console.print(table)
+    if result.errors:
+        console.print("\nErrors:")
+        for error in result.errors:
+            console.print(f"- {error}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--analyze", action="store_true", help="run Analyst on PASS opportunities")
-    parser.add_argument(
-        "--web-research",
-        action="store_true",
-        help="enable OpenAI Responses web_search for current competitor/pricing research",
-    )
-    parser.add_argument(
-        "--productize",
-        action="store_true",
-        help="convert BUILD/VALIDATE analyst results into product packages",
-    )
-    parser.add_argument(
-        "--pm-ai",
-        action="store_true",
-        help="use Structured Outputs to enrich product packages; requires OPENAI_API_KEY",
-    )
+    parser.add_argument("--analyze", action="store_true")
+    parser.add_argument("--web-research", action="store_true")
+    parser.add_argument("--productize", action="store_true")
+    parser.add_argument("--pm-ai", action="store_true")
+    parser.add_argument("--build-next", action="store_true", help="consume next Builder queue item")
+    parser.add_argument("--builder-ai", action="store_true", help="generate product-specific src/ code")
+    parser.add_argument("--install", action="store_true", help="run npm install in generated workspace")
+    parser.add_argument("--qa", action="store_true", help="run npm install + lint + build")
+    parser.add_argument("--clean-build", action="store_true", help="recreate existing workspace")
     args = parser.parse_args()
 
     console = Console()
+
+    if args.build_next:
+        result = BuilderAgent().build_next(
+            use_ai=args.builder_ai,
+            install=args.install,
+            qa=args.qa,
+            clean=args.clean_build,
+        )
+        show_build(console, result)
+        return
+
     workflow = FactoryWorkflow()
     results, scout_report = workflow.run_discovery()
     show_scout(console, results)
@@ -83,7 +110,10 @@ def main() -> None:
 
     should_analyze = args.analyze or args.web_research or args.productize or args.pm_ai
     if should_analyze:
-        reports, analyst_report = workflow.run_analysis(results, web_research=args.web_research)
+        reports, analyst_report = workflow.run_analysis(
+            results,
+            web_research=args.web_research,
+        )
         console.print()
         show_analyst(console, reports)
         console.print(f"\nAnalyst report: {analyst_report}")
@@ -92,10 +122,6 @@ def main() -> None:
             outputs = workflow.run_productization(reports, use_ai=args.pm_ai)
             console.print()
             show_products(console, outputs)
-            if outputs:
-                console.print("\nBuild-ready products are appended to data/build_queue.jsonl.")
-            else:
-                console.print("\nNo BUILD/VALIDATE thesis qualified for productization.")
 
 
 if __name__ == "__main__":
