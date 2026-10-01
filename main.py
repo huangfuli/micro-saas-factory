@@ -1,8 +1,10 @@
 import argparse
 from rich.console import Console
 from rich.table import Table
-from orchestrator.workflow import FactoryWorkflow
+
 from builder.agent import BuilderAgent
+from launch.agent import LaunchAgent
+from orchestrator.workflow import FactoryWorkflow
 
 
 def show_scout(console, results):
@@ -78,20 +80,62 @@ def show_build(console, result):
             console.print(f"- {error}")
 
 
+def show_launch(console, result):
+    if result is None:
+        console.print("No BUILT product is ready for Launch.")
+        return
+    table = Table(title="Launch Agent v0.1 — Release Result")
+    table.add_column("Status")
+    table.add_column("Product")
+    table.add_column("GitHub")
+    table.add_column("Deployment")
+    table.add_row(
+        result.status,
+        result.product_slug,
+        result.github_repo or "-",
+        result.deployment_url or "-",
+    )
+    console.print(table)
+    console.print(f"\nRelease archive: {result.archive_path}")
+    if result.billing.price_id:
+        console.print(f"Stripe price: {result.billing.price_id}")
+    if result.smoke_results:
+        console.print(f"Smoke checks: {result.smoke_results}")
+    if result.errors:
+        console.print("\nErrors:")
+        for error in result.errors:
+            console.print(f"- {error}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--analyze", action="store_true")
     parser.add_argument("--web-research", action="store_true")
     parser.add_argument("--productize", action="store_true")
     parser.add_argument("--pm-ai", action="store_true")
-    parser.add_argument("--build-next", action="store_true", help="consume next Builder queue item")
-    parser.add_argument("--builder-ai", action="store_true", help="generate product-specific src/ code")
-    parser.add_argument("--install", action="store_true", help="run npm install in generated workspace")
-    parser.add_argument("--qa", action="store_true", help="run npm install + lint + build")
-    parser.add_argument("--clean-build", action="store_true", help="recreate existing workspace")
+
+    parser.add_argument("--build-next", action="store_true")
+    parser.add_argument("--builder-ai", action="store_true")
+    parser.add_argument("--install", action="store_true")
+    parser.add_argument("--qa", action="store_true")
+    parser.add_argument("--clean-build", action="store_true")
+
+    parser.add_argument("--launch-next", action="store_true")
+    parser.add_argument("--publish-github", action="store_true")
+    parser.add_argument("--provision-stripe", action="store_true")
+    parser.add_argument("--deploy-vercel", action="store_true")
     args = parser.parse_args()
 
     console = Console()
+
+    if args.launch_next:
+        result = LaunchAgent().prepare_next(
+            publish_github=args.publish_github,
+            provision_stripe=args.provision_stripe,
+            deploy_vercel=args.deploy_vercel,
+        )
+        show_launch(console, result)
+        return
 
     if args.build_next:
         result = BuilderAgent().build_next(
@@ -108,7 +152,12 @@ def main() -> None:
     show_scout(console, results)
     console.print(f"\nScout report: {scout_report}")
 
-    should_analyze = args.analyze or args.web_research or args.productize or args.pm_ai
+    should_analyze = (
+        args.analyze
+        or args.web_research
+        or args.productize
+        or args.pm_ai
+    )
     if should_analyze:
         reports, analyst_report = workflow.run_analysis(
             results,
@@ -119,7 +168,10 @@ def main() -> None:
         console.print(f"\nAnalyst report: {analyst_report}")
 
         if args.productize or args.pm_ai:
-            outputs = workflow.run_productization(reports, use_ai=args.pm_ai)
+            outputs = workflow.run_productization(
+                reports,
+                use_ai=args.pm_ai,
+            )
             console.print()
             show_products(console, outputs)
 
