@@ -186,7 +186,7 @@ Rules:
             source_recommendation=report.recommendation,
             build_goal=f"Ship the smallest testable paid workflow for {report.job_to_be_done}",
             tasks=tasks,
-            required_env=["DATABASE_URL", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
+            required_env=["DATABASE_URL", "NEXT_PUBLIC_APP_URL", "STRIPE_SECRET_KEY", "STRIPE_PRICE_ID", "STRIPE_WEBHOOK_SECRET"],
         )
 
         return ProductPackage(
