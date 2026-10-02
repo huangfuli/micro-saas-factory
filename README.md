@@ -6,7 +6,7 @@ AI-native product factory:
 
 ## Payment provider
 
-The factory uses **Lemon Squeezy**, not Stripe.
+The factory uses **Lemon Squeezy** as its payment and subscription provider.
 
 The billing implementation is intentionally designed around Lemon Squeezy's merchant-review process:
 
