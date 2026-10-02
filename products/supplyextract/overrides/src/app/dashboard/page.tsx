@@ -13,7 +13,7 @@ type LineItem = {
 };
 
 type ExtractedDocument = {
-  document_type: "invoice" | "purchase_order" | "other";
+  document_type: string | null;
   vendor_name: string | null;
   document_number: string | null;
   document_date: string | null;
