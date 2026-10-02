@@ -61,7 +61,10 @@ function label(value: string) {
 }
 
 function csvCell(value: unknown) {
-  const text = value == null ? "" : String(value);
+  let text = value == null ? "" : String(value);
+  if (/^[=+\-@]/.test(text)) {
+    text = "'" + text;
+  }
   return '"' + text.replaceAll('"', '""') + '"';
 }
 
