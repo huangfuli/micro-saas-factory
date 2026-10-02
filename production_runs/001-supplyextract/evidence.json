@@ -1,0 +1,41 @@
+{
+  "run_id": "001-supplyextract",
+  "selected_at": "2026-10-02",
+  "product": "SupplyExtract",
+  "decision": "BUILD",
+  "internal_score": 82,
+  "evidence": [
+    {
+      "type": "user_problem",
+      "source": "Reddit / r/smallbusiness",
+      "url": "https://www.reddit.com/r/smallbusiness/comments/1p2of5v/how_do_you_guys_handle_data_entry_from/",
+      "summary": "A logistics-company workflow was described as receiving about 50 supplier-invoice PDFs weekly and manually typing price, quantity and SKU line items into Excel for roughly four hours each Friday; the poster said existing tools felt expensive or complex."
+    },
+    {
+      "type": "adjacent_problem",
+      "source": "Reddit / r/freightforwarding",
+      "url": "https://sr.reddit.com/r/freightforwarding/comments/1u3iw94/those_of_you_handling_chartering_enquiries_das/",
+      "summary": "A freight-industry discussion asks about repeated read-and-retype work from unstructured shipping documents and emails into spreadsheets or CRMs."
+    },
+    {
+      "type": "competitor",
+      "source": "Docparser",
+      "url": "https://docparser.com/pricing",
+      "summary": "Docparser publicly offers document parsing and CSV/JSON/Excel export, with a Starter monthly tier shown at $39/month."
+    },
+    {
+      "type": "competitor",
+      "source": "Nanonets",
+      "url": "https://nanonets.com/pricing",
+      "summary": "Nanonets publicly offers invoice/data extraction with usage-based workflow pricing and a paid Starter level after introductory credits."
+    }
+  ],
+  "constraints": [
+    "Do not claim perfect accuracy.",
+    "Do not persist uploaded PDF bytes in the MVP application.",
+    "Do not target bank statements in Run #001.",
+    "Do not publish a monthly document quota until usage metering is implemented.",
+    "Public pricing must match the verified Lemon Squeezy Price object.",
+    "Website claims must remain limited to functionality that exists in the shipped build."
+  ]
+}
