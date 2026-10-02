@@ -1,4 +1,5 @@
 import argparse
+
 from rich.console import Console
 from rich.table import Table
 
@@ -62,7 +63,8 @@ def show_build(console, result):
     if result is None:
         console.print("Builder queue is empty.")
         return
-    table = Table(title="Builder Agent v0.1 — Build Result")
+
+    table = Table(title="Builder Agent v0.2 — Build Result")
     table.add_column("Status")
     table.add_column("Product")
     table.add_column("Workspace")
@@ -74,6 +76,7 @@ def show_build(console, result):
         str(len(result.generated_files)),
     )
     console.print(table)
+
     if result.errors:
         console.print("\nErrors:")
         for error in result.errors:
@@ -84,23 +87,52 @@ def show_launch(console, result):
     if result is None:
         console.print("No BUILT product is ready for Launch.")
         return
-    table = Table(title="Launch Agent v0.1 — Release Result")
+
+    table = Table(title="Launch Agent — Lemon Squeezy Release")
     table.add_column("Status")
     table.add_column("Product")
+    table.add_column("Billing")
     table.add_column("GitHub")
     table.add_column("Deployment")
+
+    billing_mode = "-"
+    if result.billing.variant_id:
+        billing_mode = "TEST MODE" if result.billing.test_mode else "LIVE MODE"
+
     table.add_row(
         result.status,
         result.product_slug,
+        billing_mode,
         result.github_repo or "-",
         result.deployment_url or "-",
     )
     console.print(table)
     console.print(f"\nRelease archive: {result.archive_path}")
-    if result.billing.price_id:
-        console.print(f"Stripe price: {result.billing.price_id}")
+
+    if result.billing.variant_id:
+        console.print(
+            "Lemon Squeezy: store={} variant={} price=$".format(
+                result.billing.store_id,
+                result.billing.variant_id,
+            )
+            + "{:.2f}/month".format(result.billing.monthly_amount_usd or 0)
+        )
+
+    if result.billing.webhook_id:
+        console.print(f"Webhook ID: {result.billing.webhook_id}")
+
+    if result.compliance:
+        console.print(
+            "Merchant-review preflight: {}".format(
+                "PASS" if result.compliance.passed else "FAIL"
+            )
+        )
+        for warning in result.compliance.warnings:
+            console.print(f"- Warning: {warning}")
+
     if result.smoke_results:
         console.print(f"Smoke checks: {result.smoke_results}")
+
     if result.errors:
         console.print("\nErrors:")
         for error in result.errors:
@@ -122,7 +154,11 @@ def main() -> None:
 
     parser.add_argument("--launch-next", action="store_true")
     parser.add_argument("--publish-github", action="store_true")
-    parser.add_argument("--provision-stripe", action="store_true")
+    parser.add_argument(
+        "--configure-lemonsqueezy",
+        action="store_true",
+        help="verify the configured Lemon Squeezy monthly subscription variant",
+    )
     parser.add_argument("--deploy-vercel", action="store_true")
     args = parser.parse_args()
 
@@ -131,7 +167,7 @@ def main() -> None:
     if args.launch_next:
         result = LaunchAgent().prepare_next(
             publish_github=args.publish_github,
-            provision_stripe=args.provision_stripe,
+            configure_lemonsqueezy=args.configure_lemonsqueezy,
             deploy_vercel=args.deploy_vercel,
         )
         show_launch(console, result)
