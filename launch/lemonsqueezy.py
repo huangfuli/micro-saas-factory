@@ -40,35 +40,62 @@ class LemonSqueezyProvisioner:
         if not store_id or not variant_id:
             raise RuntimeError(
                 "LEMON_SQUEEZY_STORE_ID and LEMON_SQUEEZY_VARIANT_ID are required. "
-                "Create the SaaS product/variant in Lemon Squeezy first, then configure their IDs."
+                "Create the real SaaS product and subscription variant in Lemon Squeezy "
+                "test mode first, then configure their IDs."
             )
 
         variant = self._get(f"/variants/{quote(variant_id)}")["data"]
-        attrs = variant["attributes"]
-        product_id = str(attrs["product_id"])
+        variant_attrs = variant["attributes"]
+        product_id = str(variant_attrs["product_id"])
+
         product = self._get(f"/products/{quote(product_id)}")["data"]
         product_attrs = product["attributes"]
 
+        prices = self._get(
+            f"/prices?filter[variant_id]={quote(variant_id)}"
+        ).get("data", [])
+        if not prices:
+            raise RuntimeError("No Lemon Squeezy Price object exists for the configured variant.")
+
+        current_price = prices[0]["attributes"]
+
         if str(product_attrs["store_id"]) != store_id:
-            raise RuntimeError("Configured Lemon Squeezy variant does not belong to the configured store.")
+            raise RuntimeError(
+                "Configured Lemon Squeezy variant does not belong to the configured store."
+            )
         if product_attrs.get("status") != "published":
             raise RuntimeError("Lemon Squeezy product must be published before launch.")
-        if attrs.get("status") not in {"published", "pending"}:
+        if variant_attrs.get("status") not in {"published", "pending"}:
             raise RuntimeError("Lemon Squeezy variant is not active/published.")
-        if not attrs.get("is_subscription"):
-            raise RuntimeError("Configured Lemon Squeezy variant must be a subscription.")
-        if attrs.get("interval") != "month" or int(attrs.get("interval_count") or 1) != 1:
-            raise RuntimeError("Factory v0.1 expects a monthly subscription variant.")
+        if current_price.get("category") != "subscription":
+            raise RuntimeError("Configured Lemon Squeezy variant must use subscription pricing.")
+        if current_price.get("scheme") != "standard":
+            raise RuntimeError(
+                "Factory v0.2 currently requires standard flat subscription pricing."
+            )
+        if (
+            current_price.get("renewal_interval_unit") != "month"
+            or int(current_price.get("renewal_interval_quantity") or 1) != 1
+        ):
+            raise RuntimeError("Factory v0.2 expects a monthly subscription variant.")
 
         description = (product_attrs.get("description") or "").strip()
         if len(description) < 20:
             raise RuntimeError(
-                "Lemon Squeezy product description is too thin. Describe the real SaaS product clearly before review."
+                "Lemon Squeezy product description is too thin. "
+                "Describe the actual SaaS product clearly before merchant review."
             )
 
-        cents = int(attrs.get("price") or product_attrs.get("price") or 0)
+        cents = current_price.get("unit_price")
+        if cents is None:
+            decimal = current_price.get("unit_price_decimal")
+            cents = float(decimal) if decimal is not None else 0
+
+        cents = float(cents or 0)
         if cents <= 0:
-            raise RuntimeError("Unable to verify a positive Lemon Squeezy subscription price.")
+            raise RuntimeError(
+                "Unable to verify a positive Lemon Squeezy subscription price."
+            )
 
         return BillingProvision(
             provider="lemon_squeezy",
@@ -76,7 +103,7 @@ class LemonSqueezyProvisioner:
             product_id=product_id,
             variant_id=variant_id,
             monthly_amount_usd=cents / 100,
-            test_mode=bool(attrs.get("test_mode")),
+            test_mode=bool(variant_attrs.get("test_mode")),
             checkout_url=product_attrs.get("buy_now_url"),
         )
 
@@ -98,6 +125,7 @@ class LemonSqueezyProvisioner:
         ).get("data", [])
         if isinstance(existing, dict):
             existing = [existing]
+
         for item in existing:
             if (item.get("attributes") or {}).get("url") == target:
                 return str(item.get("id"))
