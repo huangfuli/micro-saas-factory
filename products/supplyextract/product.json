@@ -1,0 +1,250 @@
+{
+  "source_opportunity": "Supplier invoice and purchase-order PDF line-item extraction",
+  "source_analyst_score": 82,
+  "readiness": "READY_FOR_BUILD",
+  "positioning": {
+    "product_name": "SupplyExtract",
+    "one_liner": "Turn supplier invoice and purchase-order PDFs into reviewable line-item CSV and JSON.",
+    "target_user": "Small logistics, manufacturing, trades, procurement and operations teams that re-key supplier documents into spreadsheets.",
+    "painful_job": "Manually read supplier invoices and purchase orders, then retype headers and line items such as SKU, quantity, unit price and totals into spreadsheets.",
+    "unique_value": "A narrow review-before-export workflow for supplier documents, without claiming perfect extraction or replacing accounting approval."
+  },
+  "prd": {
+    "objective": "Reduce repetitive supplier-document re-keying by extracting structured fields from one PDF at a time and requiring human review before export.",
+    "user_story": "As an operations or admin user, I want to upload a supplier invoice or purchase-order PDF, review and correct the extracted fields, then download CSV or JSON instead of retyping the document.",
+    "in_scope": [
+      "Upload one PDF up to 10 MB",
+      "Extract document type, vendor, document number, date, currency and totals",
+      "Extract line items including SKU, description, quantity, unit, unit price and line total",
+      "Show extracted data in an editable review screen before export",
+      "Download reviewed data as CSV or JSON",
+      "Validate a Lemon Squeezy subscription license key for paid access",
+      "Allow a deliberately limited unlicensed demo only when explicitly enabled by environment configuration",
+      "Process documents without adding application-level persistent document storage in the MVP"
+    ],
+    "out_of_scope": [
+      "Bank-statement extraction",
+      "Automatic accounting or ERP posting",
+      "Automatic invoice approval",
+      "Email inbox ingestion",
+      "Batch processing",
+      "Vendor-specific training",
+      "Guarantees of extraction accuracy",
+      "Long-term document archive"
+    ],
+    "success_metrics": [
+      "A user can upload a supported PDF and receive structured fields or a clear recoverable error",
+      "A user can correct extracted values before export",
+      "CSV and JSON exports reflect the reviewed values",
+      "The application never describes AI extraction as guaranteed or error-free",
+      "Checkout, license validation and public legal pages pass launch preflight"
+    ],
+    "acceptance_criteria": [
+      "PDF MIME type and 10 MB maximum are enforced server-side",
+      "Missing or uncertain fields may be returned as null rather than invented",
+      "The review screen allows editing every extracted header field and line-item field",
+      "CSV output contains one row per line item and repeats document-level identifiers",
+      "JSON output preserves the complete reviewed document structure",
+      "Uploaded PDF bytes are not written to the product database or filesystem by application code",
+      "Paid-mode extraction requires a valid license key for the configured Lemon Squeezy variant",
+      "Public copy states that users should verify extracted data before relying on it"
+    ]
+  },
+  "landing_page": {
+    "headline": "Stop retyping supplier PDFs into spreadsheets.",
+    "subheadline": "Upload a supplier invoice or purchase order, review the extracted header and line items, then export clean CSV or JSON.",
+    "problem_bullets": [
+      "Supplier PDFs arrive in different layouts",
+      "Line items such as SKU, quantity and price are tedious to re-key",
+      "Manual re-entry creates another place for transcription mistakes"
+    ],
+    "solution_bullets": [
+      "Extract common supplier-document fields from PDF",
+      "Review and correct every extracted value before export",
+      "Export reviewed line items to CSV or JSON"
+    ],
+    "primary_cta": "Try the extractor",
+    "pricing_anchor": "Subscription price is shown on the Pricing page and must match the configured Lemon Squeezy plan.",
+    "faq": [
+      "Which PDFs are supported?",
+      "Does SupplyExtract guarantee every field is correct?",
+      "Are uploaded documents stored by the application?",
+      "How does subscription access work?"
+    ]
+  },
+  "validation_experiments": [
+    {
+      "hypothesis": "Small operations teams that currently re-key supplier PDFs will try a focused review-before-export tool.",
+      "audience": "Small logistics, manufacturing, trades and procurement teams processing supplier invoices or purchase orders",
+      "channel": "Problem-keyword SEO and direct outreach to operations/admin users who describe manual PDF-to-spreadsheet workflows",
+      "offer": "Use the live extractor on one real non-sensitive supplier PDF and review the output before exporting",
+      "primary_metric": "qualified visitor completes an extraction and reaches the review screen",
+      "pass_threshold": "At least 10 qualified users complete a real extraction and at least 3 request continued access or pricing",
+      "fail_threshold": "Fewer than 3 qualified users complete a real extraction after targeted outreach to 30 qualified prospects",
+      "max_days": 14
+    },
+    {
+      "hypothesis": "Users with recurring document-entry pain will accept a simple monthly subscription rather than a broad enterprise document platform.",
+      "audience": "Qualified users who successfully complete the extraction workflow",
+      "channel": "In-product pricing page and follow-up with early users",
+      "offer": "Monthly access to the current supplier PDF extraction workflow",
+      "primary_metric": "qualified users who start or explicitly request the paid subscription",
+      "pass_threshold": "At least 3 paid starts or explicit purchase commitments from 15 qualified conversations",
+      "fail_threshold": "No paid start or explicit purchase commitment from 15 qualified conversations",
+      "max_days": 14
+    }
+  ],
+  "pricing_plan": "Initial product hypothesis: one monthly subscription for the current supplier PDF extraction workflow. The public price must be sourced from the verified Lemon Squeezy Price object at launch; do not publish a different hard-coded price.",
+  "technical_spec": {
+    "architecture": "Next.js App Router web application. Browser uploads a PDF to a server route; the route validates entitlement and file limits, sends the PDF transiently to the configured OpenAI Responses model for structured extraction, returns JSON to an editable client-side review UI, and does not add application-level PDF persistence.",
+    "frontend": "Next.js + TypeScript client review table with CSV/JSON export",
+    "backend": "Next.js route handlers using native fetch for OpenAI Responses API and Lemon Squeezy License API",
+    "database": "No product database required for MVP document processing. Add persistent usage metering before advertising or enforcing a monthly document quota.",
+    "integrations": [
+      "OpenAI Responses API for PDF input and schema-constrained extraction",
+      "Lemon Squeezy subscription checkout",
+      "Lemon Squeezy License API for entitlement validation",
+      "Lemon Squeezy signed webhooks for subscription lifecycle",
+      "Vercel deployment"
+    ],
+    "entities": [
+      "ExtractedDocument",
+      "LineItem",
+      "LicenseValidation"
+    ],
+    "endpoints": [
+      "POST /api/extract",
+      "POST /api/billing/checkout",
+      "POST /api/billing/webhook",
+      "GET /api/health"
+    ],
+    "non_functional_requirements": [
+      "10 MB server-side PDF size limit",
+      "PDF-only MVP",
+      "No application-level persistent storage of uploaded PDF bytes",
+      "Never log PDF contents or extracted sensitive document fields",
+      "Uncertain values should be null or flagged rather than fabricated",
+      "Review-before-export UI is mandatory",
+      "OpenAI and Lemon Squeezy secrets remain server-side",
+      "Public privacy copy accurately discloses third-party document processing",
+      "No unsupported accuracy, customer, security-certification or retention claims"
+    ]
+  },
+  "builder_manifest": {
+    "product_slug": "supplyextract",
+    "status": "READY_FOR_BUILD",
+    "source_recommendation": "BUILD",
+    "build_goal": "Ship a review-ready supplier invoice / purchase-order PDF extractor that produces editable structured data and CSV/JSON export.",
+    "tasks": [
+      {
+        "id": "T001",
+        "title": "Review-ready product shell",
+        "description": "Generate the SupplyExtract product, pricing, privacy, terms, refund and contact pages.",
+        "priority": "P0",
+        "acceptance": [
+          "All merchant-review pages render",
+          "Landing copy describes only implemented MVP functionality",
+          "No invented users, customers, accuracy or savings claims appear"
+        ],
+        "dependencies": []
+      },
+      {
+        "id": "T002",
+        "title": "PDF extraction API",
+        "description": "Implement PDF validation, optional license validation and schema-constrained OpenAI extraction.",
+        "priority": "P0",
+        "acceptance": [
+          "Only application/pdf is accepted",
+          "Files over 10 MB are rejected",
+          "Uncertain values can remain null",
+          "Response includes editable header fields and line items"
+        ],
+        "dependencies": [
+          "T001"
+        ]
+      },
+      {
+        "id": "T003",
+        "title": "Review and export UI",
+        "description": "Implement upload, editable review table and CSV/JSON download.",
+        "priority": "P0",
+        "acceptance": [
+          "User can edit all extracted fields",
+          "CSV includes one row per line item",
+          "JSON contains reviewed values",
+          "UI reminds users to verify extracted data"
+        ],
+        "dependencies": [
+          "T002"
+        ]
+      },
+      {
+        "id": "T004",
+        "title": "Lemon Squeezy entitlement",
+        "description": "Validate paid license keys against the configured Lemon Squeezy subscription variant.",
+        "priority": "P0",
+        "acceptance": [
+          "Invalid license is rejected when paid mode is enabled",
+          "License metadata variant must match configured variant",
+          "No Lemon Squeezy secret is exposed to the browser"
+        ],
+        "dependencies": [
+          "T002"
+        ]
+      },
+      {
+        "id": "T005",
+        "title": "Privacy and retention verification",
+        "description": "Verify app code does not persist uploaded PDF bytes and public privacy text accurately describes OpenAI processing.",
+        "priority": "P0",
+        "acceptance": [
+          "No application code writes uploaded PDF bytes to disk or database",
+          "Privacy page discloses third-party AI processing",
+          "No claim is made that upstream processors have zero retention"
+        ],
+        "dependencies": [
+          "T002",
+          "T003"
+        ]
+      },
+      {
+        "id": "T006",
+        "title": "QA and launch preflight",
+        "description": "Run lint/build plus merchant-review compliance checks.",
+        "priority": "P0",
+        "acceptance": [
+          "npm run lint passes",
+          "npm run build passes",
+          "Merchant-review source preflight passes",
+          "Core public routes and /api/health are ready for smoke testing"
+        ],
+        "dependencies": [
+          "T003",
+          "T004",
+          "T005"
+        ]
+      }
+    ],
+    "required_env": [
+      "OPENAI_API_KEY",
+      "OPENAI_EXTRACTION_MODEL",
+      "ALLOW_UNLICENSED_EXTRACTION",
+      "LEMON_SQUEEZY_API_KEY",
+      "LEMON_SQUEEZY_STORE_ID",
+      "LEMON_SQUEEZY_VARIANT_ID",
+      "LEMON_SQUEEZY_WEBHOOK_SECRET",
+      "NEXT_PUBLIC_LEGAL_BUSINESS_NAME",
+      "NEXT_PUBLIC_SUPPORT_EMAIL",
+      "NEXT_PUBLIC_PLAN_PRICE",
+      "NEXT_PUBLIC_REFUND_POLICY_TEXT"
+    ]
+  },
+  "risks": [
+    "AI extraction can be wrong; users must review output before relying on it",
+    "Supplier documents may contain confidential commercial information",
+    "Third-party AI processing must be disclosed accurately",
+    "A monthly document quota should not be marketed until persistent usage metering exists",
+    "Scanned or unusually complex PDFs may produce lower-quality extraction",
+    "Do not expand into bank statements or automated accounting approval without a separate risk/compliance review"
+  ]
+}
