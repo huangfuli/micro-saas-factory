@@ -8,7 +8,10 @@ from reports.product_package import write_product_package
 from tests.test_product_manager import report
 
 
-def test_builder_creates_workspace_without_external_commands(tmp_path, monkeypatch):
+def test_builder_creates_review_ready_workspace_without_external_commands(
+    tmp_path,
+    monkeypatch,
+):
     monkeypatch.chdir(tmp_path)
     package = ProductManagerAgent().productize(report("BUILD"))
     write_product_package(package)
@@ -22,13 +25,24 @@ def test_builder_creates_workspace_without_external_commands(tmp_path, monkeypat
     assert result is not None
     assert result.status == "DRY_RUN"
     workspace = Path(result.workspace)
+
     assert (workspace / "package.json").exists()
     assert (workspace / "src/app/page.tsx").exists()
     assert (workspace / "docs/PRD.md").exists()
+    assert (workspace / "src/app/pricing/page.tsx").exists()
+    assert (workspace / "src/app/privacy/page.tsx").exists()
+    assert (workspace / "src/app/terms/page.tsx").exists()
+    assert (workspace / "src/app/refund-policy/page.tsx").exists()
+    assert (workspace / "src/app/contact/page.tsx").exists()
     assert (workspace / "src/app/api/billing/checkout/route.ts").exists()
+    assert (workspace / "src/app/api/billing/webhook/route.ts").exists()
 
     env_text = (workspace / ".env.example").read_text(encoding="utf-8")
-    assert "STRIPE_PRICE_ID=" in env_text
+    assert "LEMON_SQUEEZY_API_KEY=" in env_text
+    assert "LEMON_SQUEEZY_STORE_ID=" in env_text
+    assert "LEMON_SQUEEZY_VARIANT_ID=" in env_text
+    assert "LEMON_SQUEEZY_WEBHOOK_SECRET=" in env_text
+    assert "STRIPE_" not in env_text
 
     rows = [
         json.loads(x)
