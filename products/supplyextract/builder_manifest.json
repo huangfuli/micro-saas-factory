@@ -1,0 +1,109 @@
+{
+  "product_slug": "supplyextract",
+  "status": "READY_FOR_BUILD",
+  "source_recommendation": "BUILD",
+  "build_goal": "Ship a review-ready supplier invoice / purchase-order PDF extractor that produces editable structured data and CSV/JSON export.",
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Review-ready product shell",
+      "description": "Generate the SupplyExtract product, pricing, privacy, terms, refund and contact pages.",
+      "priority": "P0",
+      "acceptance": [
+        "All merchant-review pages render",
+        "Landing copy describes only implemented MVP functionality",
+        "No invented users, customers, accuracy or savings claims appear"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "T002",
+      "title": "PDF extraction API",
+      "description": "Implement PDF validation, optional license validation and schema-constrained OpenAI extraction.",
+      "priority": "P0",
+      "acceptance": [
+        "Only application/pdf is accepted",
+        "Files over 10 MB are rejected",
+        "Uncertain values can remain null",
+        "Response includes editable header fields and line items"
+      ],
+      "dependencies": [
+        "T001"
+      ]
+    },
+    {
+      "id": "T003",
+      "title": "Review and export UI",
+      "description": "Implement upload, editable review table and CSV/JSON download.",
+      "priority": "P0",
+      "acceptance": [
+        "User can edit all extracted fields",
+        "CSV includes one row per line item",
+        "JSON contains reviewed values",
+        "UI reminds users to verify extracted data"
+      ],
+      "dependencies": [
+        "T002"
+      ]
+    },
+    {
+      "id": "T004",
+      "title": "Lemon Squeezy entitlement",
+      "description": "Validate paid license keys against the configured Lemon Squeezy subscription variant.",
+      "priority": "P0",
+      "acceptance": [
+        "Invalid license is rejected when paid mode is enabled",
+        "License metadata variant must match configured variant",
+        "No Lemon Squeezy secret is exposed to the browser"
+      ],
+      "dependencies": [
+        "T002"
+      ]
+    },
+    {
+      "id": "T005",
+      "title": "Privacy and retention verification",
+      "description": "Verify app code does not persist uploaded PDF bytes and public privacy text accurately describes OpenAI processing.",
+      "priority": "P0",
+      "acceptance": [
+        "No application code writes uploaded PDF bytes to disk or database",
+        "Privacy page discloses third-party AI processing",
+        "No claim is made that upstream processors have zero retention"
+      ],
+      "dependencies": [
+        "T002",
+        "T003"
+      ]
+    },
+    {
+      "id": "T006",
+      "title": "QA and launch preflight",
+      "description": "Run lint/build plus merchant-review compliance checks.",
+      "priority": "P0",
+      "acceptance": [
+        "npm run lint passes",
+        "npm run build passes",
+        "Merchant-review source preflight passes",
+        "Core public routes and /api/health are ready for smoke testing"
+      ],
+      "dependencies": [
+        "T003",
+        "T004",
+        "T005"
+      ]
+    }
+  ],
+  "required_env": [
+    "OPENAI_API_KEY",
+    "OPENAI_EXTRACTION_MODEL",
+    "ALLOW_UNLICENSED_EXTRACTION",
+    "LEMON_SQUEEZY_API_KEY",
+    "LEMON_SQUEEZY_STORE_ID",
+    "LEMON_SQUEEZY_VARIANT_ID",
+    "LEMON_SQUEEZY_WEBHOOK_SECRET",
+    "NEXT_PUBLIC_LEGAL_BUSINESS_NAME",
+    "NEXT_PUBLIC_SUPPORT_EMAIL",
+    "NEXT_PUBLIC_PLAN_PRICE",
+    "NEXT_PUBLIC_REFUND_POLICY_TEXT"
+  ]
+}
