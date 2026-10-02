@@ -56,6 +56,10 @@ class BuilderAgent:
                 bundle = self.codegen.generate(package)
                 result.generated_files.extend(self.codegen.apply(workspace, bundle))
 
+            result.generated_files.extend(
+                self._apply_product_overrides(slug, workspace)
+            )
+
             result.completed_tasks.extend(["T001", "T005"])
             qa_commands = [["npm", "run", "lint"], ["npm", "run", "build"]]
             result.qa_commands = [" ".join(x) for x in qa_commands]
@@ -109,6 +113,31 @@ class BuilderAgent:
             src = source / name
             if src.exists():
                 shutil.copy2(src, target / name)
+
+    def _apply_product_overrides(
+        self,
+        slug: str,
+        workspace: Path,
+    ) -> list[str]:
+        source = self.products_root / slug / "overrides"
+        if not source.exists():
+            return []
+
+        written = []
+        for src in source.rglob("*"):
+            if not src.is_file():
+                continue
+            relative = src.relative_to(source)
+            if relative.parts[0] not in {"src", "docs"}:
+                raise ValueError(
+                    "Product overrides may only write under src/ or docs/: "
+                    + str(relative)
+                )
+            target = workspace / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, target)
+            written.append(str(relative).replace("\\", "/"))
+        return written
 
     @staticmethod
     def _write_result(workspace: Path, result: BuildResult) -> None:
