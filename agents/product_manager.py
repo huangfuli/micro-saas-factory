@@ -57,7 +57,7 @@ Rules:
 - Avoid speculative integrations unless required for the core workflow.
 - Tasks must be independently testable and have acceptance criteria.
 - Prefer a simple web stack: Next.js frontend, Python API only when needed, PostgreSQL/Supabase storage.
-- Never invent competitor facts or market evidence beyond the analyst report.
+- Never invent competitor facts or market evidence beyond the analyst report.\n- Never invent customers, testimonials, logos, usage counts, revenue, awards, partnerships, guarantees, or product capabilities.\n- Public website copy must describe only functionality actually present in the MVP.\n- Pricing, privacy, terms, refund-policy and contact pages are mandatory before payment-provider review.
 """
         client = OpenAI()
         response = client.responses.create(
@@ -159,7 +159,7 @@ Rules:
             frontend="Next.js + TypeScript",
             backend="Next.js server actions/API routes; add Python/FastAPI only for Python-specific AI/data workloads",
             database="PostgreSQL via Supabase",
-            integrations=["Stripe billing", "email provider", "core workflow provider/API only when required"],
+            integrations=["Lemon Squeezy subscription billing", "email provider", "core workflow provider/API only when required"],
             entities=["User", "Workspace", "Job", "Result", "Plan", "UsageEvent"],
             endpoints=[
                 "POST /api/jobs",
@@ -186,7 +186,7 @@ Rules:
             source_recommendation=report.recommendation,
             build_goal=f"Ship the smallest testable paid workflow for {report.job_to_be_done}",
             tasks=tasks,
-            required_env=["DATABASE_URL", "NEXT_PUBLIC_APP_URL", "STRIPE_SECRET_KEY", "STRIPE_PRICE_ID", "STRIPE_WEBHOOK_SECRET"],
+            required_env=["DATABASE_URL", "LEMON_SQUEEZY_API_KEY", "LEMON_SQUEEZY_STORE_ID", "LEMON_SQUEEZY_VARIANT_ID", "LEMON_SQUEEZY_WEBHOOK_SECRET", "NEXT_PUBLIC_LEGAL_BUSINESS_NAME", "NEXT_PUBLIC_SUPPORT_EMAIL", "NEXT_PUBLIC_PLAN_PRICE", "NEXT_PUBLIC_REFUND_POLICY_TEXT"],
         )
 
         return ProductPackage(
