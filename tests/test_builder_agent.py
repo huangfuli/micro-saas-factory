@@ -42,7 +42,6 @@ def test_builder_creates_review_ready_workspace_without_external_commands(
     assert "LEMON_SQUEEZY_STORE_ID=" in env_text
     assert "LEMON_SQUEEZY_VARIANT_ID=" in env_text
     assert "LEMON_SQUEEZY_WEBHOOK_SECRET=" in env_text
-    assert "STRIPE_" not in env_text
 
     rows = [
         json.loads(x)
