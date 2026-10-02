@@ -1,5 +1,10 @@
 import argparse
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from builder.queue import BuilderQueue
 from schemas.product import ProductPackage
@@ -10,7 +15,7 @@ def main() -> None:
     parser.add_argument("slug")
     args = parser.parse_args()
 
-    path = Path("products") / args.slug / "product.json"
+    path = ROOT / "products" / args.slug / "product.json"
     if not path.exists():
         raise SystemExit(f"Product package not found: {path}")
 
